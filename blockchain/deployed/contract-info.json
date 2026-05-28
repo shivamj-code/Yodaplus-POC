@@ -1,0 +1,5 @@
+{
+  "network": "sepolia",
+  "contractAddress": "0x1ea5879fB3E815DcC2018973c302B12C189639B4",
+  "abiPath": "../artifacts/contracts/CertificateRegistry.sol/CertificateRegistry.json"
+}
