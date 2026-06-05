@@ -20,7 +20,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 recipientName TEXT NOT NULL,
                 course TEXT NOT NULL,
                 institutionName TEXT,
-                documentHash TEXT NOT NULL,
+                documentHash TEXT UNIQUE NOT NULL,
                 txHash TEXT NOT NULL,
                 revoked INTEGER DEFAULT 0,
                 createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -57,6 +57,23 @@ const db = new sqlite3.Database(dbPath, (err) => {
                             }
                         );
                     }
+
+                    db.run(
+                        `
+                        CREATE UNIQUE INDEX IF NOT EXISTS
+                        idx_certificates_documentHash_unique
+                        ON certificates(documentHash)
+                        `,
+                        (err) => {
+
+                            if (err) {
+                                console.warn(
+                                    "Warning: could not apply UNIQUE constraint to documentHash. Existing duplicate certificate hashes may need cleanup:",
+                                    err.message
+                                );
+                            }
+                        }
+                    );
                 });
             }
         });

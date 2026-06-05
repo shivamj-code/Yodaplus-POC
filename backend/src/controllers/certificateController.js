@@ -38,6 +38,29 @@ const getCertificateByHash = (hash) => {
     });
 };
 
+const getCertificateIdByHash = (hash) => {
+
+    return new Promise((resolve, reject) => {
+
+        db.get(
+            `
+            SELECT certificateId
+            FROM certificates
+            WHERE documentHash = ?
+            `,
+            [hash],
+            (err, row) => {
+
+                if (err) {
+                    return reject(err);
+                }
+
+                resolve(row);
+            }
+        );
+    });
+};
+
 const cleanupUploadedFile = async (filePath) => {
 
     if (!filePath) {
@@ -122,6 +145,20 @@ const issueCertificate = async (req, res) => {
             req.file.path
         );
 
+        const existingCertificate =
+            await getCertificateIdByHash(
+                hash
+            );
+
+        if (existingCertificate) {
+
+            return res.status(409).json({
+                success: false,
+                message:
+                    "This certificate has already been issued"
+            });
+        }
+
         // Generate certificate ID
         const certificateId =
             "CERT-" + Date.now();
@@ -166,6 +203,14 @@ const issueCertificate = async (req, res) => {
                 if (err) {
 
                     console.error(err);
+
+                    if (err.code === "SQLITE_CONSTRAINT") {
+                        return res.status(409).json({
+                            success: false,
+                            message:
+                                "This certificate has already been issued"
+                        });
+                    }
 
                     return res.status(500).json({
                         success: false,
