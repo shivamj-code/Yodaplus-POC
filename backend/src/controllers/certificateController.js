@@ -11,6 +11,10 @@ const {
     revokeCertificateOnChain
 } = require("../services/blockchainService");
 
+const {
+    generateQRCode
+} = require("../services/qrService");
+
 const getCertificateByHash = (hash) => {
 
     return new Promise((resolve, reject) => {
@@ -94,7 +98,7 @@ const issueCertificate = async (req, res) => {
 
     try {
 
-        const { recipientName, course } = req.body;
+        const { recipientName, course, institutionName = "" } = req.body;
 
         if (!recipientName || !course) {
 
@@ -129,6 +133,11 @@ const issueCertificate = async (req, res) => {
                 hash
             );
 
+        const qrCode =
+            await generateQRCode(
+                certificateId
+            );
+
         // Save in database
         db.run(
             `
@@ -136,16 +145,18 @@ const issueCertificate = async (req, res) => {
                 certificateId,
                 recipientName,
                 course,
+                institutionName,
                 documentHash,
                 txHash,
                 revoked
             )
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             `,
             [
                 certificateId,
                 recipientName,
                 course,
+                institutionName,
                 hash,
                 blockchainResult.txHash,
                 0
@@ -167,14 +178,21 @@ const issueCertificate = async (req, res) => {
                     success: true,
                     message:
                         "Certificate issued successfully",
+                    certificateId,
+                    hash,
+                    txHash:
+                        blockchainResult.txHash,
+                    qrCode,
 
                     data: {
                         certificateId,
                         recipientName,
                         course,
+                        institutionName,
                         hash,
                         txHash:
-                            blockchainResult.txHash
+                            blockchainResult.txHash,
+                        qrCode
                     }
                 });
             }
@@ -317,6 +335,9 @@ const verifyCertificate = async (req, res) => {
 
                         course:
                             row.course,
+
+                        institutionName:
+                            row.institutionName || "",
 
                         documentHash:
                             row.documentHash,

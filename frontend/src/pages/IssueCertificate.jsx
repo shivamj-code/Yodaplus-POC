@@ -8,6 +8,7 @@ import FileUpload from "../components/FileUpload";
 import Input from "../components/Input";
 import PageContainer from "../components/PageContainer";
 import ProgressBar from "../components/ProgressBar";
+import QRCodeCard from "../components/QRCodeCard";
 import StatusAlert from "../components/StatusAlert";
 import { useAsyncAction } from "../hooks/useAsyncAction";
 import { issueCertificate } from "../services/certificateService";
@@ -18,6 +19,11 @@ const initialForm = {
   courseName: "",
   institutionName: "",
   pdf: null
+};
+
+const getVerificationUrl = (certificateId) => {
+  if (!certificateId) return "";
+  return `${window.location.origin}/verify/${encodeURIComponent(certificateId)}`;
 };
 
 const IssueCertificate = () => {
@@ -130,13 +136,11 @@ const IssueCertificate = () => {
                 <DetailRow label="SHA256 Hash" value={result.hash || result.documentHash} truncate />
                 <DetailRow label="Transaction Hash" value={result.txHash} truncate />
               </dl>
-              {result.qrCode || result.qrCodeUrl ? (
-                <img
-                  src={result.qrCode || result.qrCodeUrl}
-                  alt="Certificate verification QR code"
-                  className="mt-5 h-36 w-36 rounded-lg border border-slate-200 object-contain"
-                />
-              ) : null}
+              <QRCodeCard
+                qrCode={result.qrCode || result.qrCodeUrl}
+                certificateId={result.certificateId}
+                verificationUrl={getVerificationUrl(result.certificateId)}
+              />
             </Card>
           ) : (
             <Card className="p-6">

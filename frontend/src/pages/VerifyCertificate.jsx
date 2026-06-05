@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
+import { useParams } from "react-router-dom";
 import { FileSearch, Search, ShieldAlert, ShieldCheck } from "lucide-react";
 import Button from "../components/Button";
 import Card from "../components/Card";
@@ -21,7 +22,10 @@ import {
 } from "../utils/formatters";
 import { isPdfFile } from "../utils/validation";
 
+const isValidCertificateId = (value = "") => /^CERT-[A-Za-z0-9-]+$/.test(value);
+
 const VerifyCertificate = () => {
+  const { certificateId: routeCertificateId } = useParams();
   const [mode, setMode] = useState("id");
   const [certificateId, setCertificateId] = useState("");
   const [pdf, setPdf] = useState(null);
@@ -29,6 +33,7 @@ const VerifyCertificate = () => {
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState(null);
   const { loading, error, setError, run } = useAsyncAction();
+  const autoVerifiedRef = useRef("");
 
   const resetResult = () => {
     setResult(null);
@@ -37,12 +42,59 @@ const VerifyCertificate = () => {
     setProgress(0);
   };
 
+  const verifyByCertificateId = async (id, showToast = true) => {
+    const trimmedId = id.trim();
+
+    if (!trimmedId) {
+      setFormError("Certificate ID is required");
+      return;
+    }
+
+    if (!isValidCertificateId(trimmedId)) {
+      setFormError("Invalid certificate ID format");
+      setError("Invalid certificate ID format");
+      return;
+    }
+
+    try {
+      const data = await run(() => verifyCertificateById(trimmedId));
+      setResult(data);
+
+      if (!showToast) return;
+
+      if (isCertificateValid(data)) {
+        toast.success("Certificate verified");
+      } else {
+        toast.error("Certificate is invalid or revoked");
+      }
+    } catch (err) {
+      if (showToast) {
+        toast.error(err.userMessage || "Verification failed");
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (!routeCertificateId) return;
+
+    const decodedId = decodeURIComponent(routeCertificateId);
+    if (autoVerifiedRef.current === decodedId) return;
+
+    autoVerifiedRef.current = decodedId;
+    setMode("id");
+    setCertificateId(decodedId);
+    setPdf(null);
+    resetResult();
+
+    verifyByCertificateId(decodedId, false);
+  }, [routeCertificateId]);
+
   const handleVerify = async (event) => {
     event.preventDefault();
     resetResult();
 
-    if (mode === "id" && !certificateId.trim()) {
-      setFormError("Certificate ID is required");
+    if (mode === "id") {
+      await verifyByCertificateId(certificateId, true);
       return;
     }
 
@@ -53,12 +105,10 @@ const VerifyCertificate = () => {
 
     try {
       const data = await run(() =>
-        mode === "id"
-          ? verifyCertificateById(certificateId.trim())
-          : verifyCertificateByPdf(pdf, (progressEvent) => {
-              if (!progressEvent.total) return;
-              setProgress(Math.round((progressEvent.loaded * 100) / progressEvent.total));
-            })
+        verifyCertificateByPdf(pdf, (progressEvent) => {
+          if (!progressEvent.total) return;
+          setProgress(Math.round((progressEvent.loaded * 100) / progressEvent.total));
+        })
       );
 
       setResult(data);
@@ -84,6 +134,15 @@ const VerifyCertificate = () => {
     >
       <div className="grid gap-6 lg:grid-cols-[0.9fr_1fr]">
         <Card className="p-6">
+          {routeCertificateId ? (
+            <div className="mb-5">
+              <StatusAlert
+                type="info"
+                title="QR verification"
+                message="This certificate ID was opened from a QR link and is being verified automatically."
+              />
+            </div>
+          ) : null}
           <div className="mb-5 grid grid-cols-2 rounded-lg bg-slate-100 p-1">
             <button
               type="button"
@@ -211,8 +270,8 @@ const VerifyCertificate = () => {
             <Card className="p-6">
               <h2 className="text-lg font-bold text-slate-950">Verification result</h2>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                Search by certificate ID for the current backend. PDF verification will work when
-                your backend exposes the multipart verification endpoint.
+                Search by certificate ID, upload the original PDF, or open a QR verification link
+                to view the certificate status here.
               </p>
             </Card>
           )}

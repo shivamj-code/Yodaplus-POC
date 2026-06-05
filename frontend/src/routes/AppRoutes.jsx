@@ -11,6 +11,7 @@ const AppRoutes = () => (
       <Route path="/" element={<Home />} />
       <Route path="/issue" element={<IssueCertificate />} />
       <Route path="/verify" element={<VerifyCertificate />} />
+      <Route path="/verify/:certificateId" element={<VerifyCertificate />} />
       <Route path="/revoke" element={<RevokeCertificate />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Route>

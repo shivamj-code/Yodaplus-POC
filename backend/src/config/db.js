@@ -19,6 +19,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 certificateId TEXT UNIQUE NOT NULL,
                 recipientName TEXT NOT NULL,
                 course TEXT NOT NULL,
+                institutionName TEXT,
                 documentHash TEXT NOT NULL,
                 txHash TEXT NOT NULL,
                 revoked INTEGER DEFAULT 0,
@@ -29,6 +30,34 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 console.error("Error creating certificates table:", err.message);
             } else {
                 console.log("Certificates table ready.");
+
+                db.all("PRAGMA table_info(certificates)", (err, columns) => {
+
+                    if (err) {
+                        return console.error("Error reading certificates schema:", err.message);
+                    }
+
+                    const hasInstitutionName = columns.some(
+                        (column) => column.name === "institutionName"
+                    );
+
+                    if (!hasInstitutionName) {
+                        db.run(
+                            "ALTER TABLE certificates ADD COLUMN institutionName TEXT",
+                            (err) => {
+
+                                if (err) {
+                                    console.error(
+                                        "Error adding institutionName column:",
+                                        err.message
+                                    );
+                                } else {
+                                    console.log("institutionName column added.");
+                                }
+                            }
+                        );
+                    }
+                });
             }
         });
     }
